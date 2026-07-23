@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>College Network Operations Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    color-scheme: dark;
+    --page:#0a0f1a; --surface:#0d1420; --surface-2:#121b2c; --surface-3:#182338;
+    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.16);
+    --text-1:#eaf0fb; --text-2:#9aa8c2; --text-3:#667089;
+    --accent:#3987e5; --accent-strong:#5a9bec; --accent-wash:rgba(57,135,229,.14);
+    --aqua:#199e70; --aqua-wash:rgba(25,158,112,.16);
+    --tag:#c98500; --tag-wash:rgba(201,133,0,.16);
+    --violet:#9085e9; --violet-wash:rgba(144,133,233,.16);
+    --good:#2ecf5e; --good-wash:rgba(46,207,94,.14);
+    --warn:#fab219; --warn-wash:rgba(250,178,25,.14);
+    --serious:#ec835a; --serious-wash:rgba(236,131,90,.15);
+    --crit:#f0555a; --crit-wash:rgba(240,85,90,.15);
+    --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Mono", "Consolas", "SF Mono", Menlo, monospace;
+    --radius:8px;
+  }
+  :root[data-theme="light"]{
+    color-scheme: light;
+    --page:#f3f5fa; --surface:#ffffff; --surface-2:#f1f4f9; --surface-3:#e8ecf4;
+    --border:rgba(15,25,45,.10); --border-strong:rgba(15,25,45,.18);
+    --text-1:#0f1826; --text-2:#48546c; --text-3:#7a869c;
+    --accent:#2a78d6; --accent-strong:#1c5cab; --accent-wash:rgba(42,120,214,.10);
+    --aqua:#128a63; --aqua-wash:rgba(18,138,99,.12);
+    --tag:#a56a00; --tag-wash:rgba(165,106,0,.12);
+    --violet:#4a3aa7; --violet-wash:rgba(74,58,167,.12);
+    --good:#0a8a0a; --good-wash:rgba(10,138,10,.10);
+    --warn:#9a6300; --warn-wash:rgba(154,99,0,.12);
+    --serious:#b04a2c; --serious-wash:rgba(176,74,44,.12);
+    --crit:#b32d2d; --crit-wash:rgba(179,45,45,.12);
+  }
+  @media (prefers-color-scheme: light){
+    :root:where(:not([data-theme="dark"])){
+      color-scheme: light;
+      --page:#f3f5fa; --surface:#ffffff; --surface-2:#f1f4f9; --surface-3:#e8ecf4;
+      --border:rgba(15,25,45,.10); --border-strong:rgba(15,25,45,.18);
+      --text-1:#0f1826; --text-2:#48546c; --text-3:#7a869c;
+      --accent:#2a78d6; --accent-strong:#1c5cab; --accent-wash:rgba(42,120,214,.10);
+      --aqua:#128a63; --aqua-wash:rgba(18,138,99,.12);
+      --tag:#a56a00; --tag-wash:rgba(165,106,0,.12);
+      --violet:#4a3aa7; --violet-wash:rgba(74,58,167,.12);
+      --good:#0a8a0a; --good-wash:rgba(10,138,10,.10);
+      --warn:#9a6300; --warn-wash:rgba(154,99,0,.12);
+      --serious:#b04a2c; --serious-wash:rgba(176,74,44,.12);
+      --crit:#b32d2d; --crit-wash:rgba(179,45,45,.12);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--page); color:var(--text-1); font-family:var(--font-ui);
+    font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  }
+  ::selection{ background:var(--accent-wash); }
+  a{color:var(--accent);}
+  button{font-family:inherit;}
+  .num{ font-variant-numeric: tabular-nums; }
+  .mono{ font-family:var(--font-mono); }
+
+  .shell{ display:flex; min-height:100vh; }
+  .sidebar{
+    width:224px; flex:0 0 224px; background:var(--surface);
+    border-right:1px solid var(--border); display:flex; flex-direction:column;
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  .brand{ padding:18px 18px 14px; border-bottom:1px solid var(--border); }
+  .brand .mark{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:14.5px; letter-spacing:.01em; }
+  .brand .mark .dot{ width:8px; height:8px; border-radius:50%; background:var(--good); box-shadow:0 0 0 3px var(--good-wash); flex:none; }
+  .brand .sub{ margin-top:4px; font-size:11px; color:var(--text-3); letter-spacing:.06em; text-transform:uppercase; }
+
+  nav.nav{ padding:10px; display:flex; flex-direction:column; gap:2px; flex:1; }
+  nav.nav .navgroup-label{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); margin:14px 10px 6px; }
+  nav.nav button.navitem{
+    display:flex; align-items:center; gap:10px; text-align:left; width:100%;
+    background:transparent; border:none; border-radius:6px; color:var(--text-2);
+    padding:9px 10px; font-size:13px; cursor:pointer; position:relative;
+  }
+  nav.nav button.navitem:hover{ background:var(--surface-2); color:var(--text-1); }
+  nav.nav button.navitem.active{ background:var(--accent-wash); color:var(--text-1); font-weight:600; }
+  nav.nav button.navitem.active::before{ content:""; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:3px; background:var(--accent); }
+  nav.nav button.navitem .cnt{ margin-left:auto; font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+  nav.nav button.navitem.active .cnt{ color:var(--accent); }
+
+  .sidebar-foot{ padding:12px; border-top:1px solid var(--border); }
+  .theme-toggle{ display:flex; gap:4px; background:var(--surface-2); border-radius:7px; padding:3px; border:1px solid var(--border); }
+  .theme-toggle button{ flex:1; border:none; background:transparent; padding:6px 0; font-size:11.5px; border-radius:5px; color:var(--text-3); cursor:pointer; }
+  .theme-toggle button.on{ background:var(--surface); color:var(--text-1); box-shadow:0 1px 0 var(--border-strong); font-weight:600; }
+
+  .main{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .topbar{
+    display:flex; align-items:center; gap:16px; padding:14px 22px; border-bottom:1px solid var(--border);
+    position:sticky; top:0; background:color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter:blur(6px); z-index:5;
+  }
+  .topbar h1{ font-size:18px; margin:0; font-weight:700; letter-spacing:-.01em; }
+  .topbar .crumb{ font-size:12px; color:var(--text-3); margin-top:2px; }
+  .topbar .spacer{ flex:1; }
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); color:var(--text-2); white-space:nowrap; }
+  .pill .dot{ width:6px; height:6px; border-radius:50%; }
+  .pill.online .dot{ background:var(--good); box-shadow:0 0 0 3px var(--good-wash); }
+  .pill.online{ color:var(--text-1); }
+  .pill.offline .dot{ background:var(--crit); box-shadow:0 0 0 3px var(--crit-wash); }
+  .clock{ font-family:var(--font-mono); font-size:12.5px; color:var(--text-2); }
+
+  .content{ padding:20px 22px 60px; max-width:1360px; width:100%; }
+  h2.sec{ font-size:13px; text-transform:uppercase; letter-spacing:.07em; color:var(--text-3); margin:28px 0 12px; font-weight:700; }
+  h2.sec:first-child{ margin-top:0; }
+  .sec-note{ font-size:12px; color:var(--text-3); }
+
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+  .kpi-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(168px,1fr)); gap:10px; }
+  .kpi{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:13px 14px; position:relative; overflow:hidden; }
+  .kpi .cap{ font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); display:flex; align-items:center; gap:6px; }
+  .kpi .val{ font-size:26px; font-weight:700; margin-top:6px; letter-spacing:-.01em; }
+  .kpi .val .unit{ font-size:12.5px; font-weight:500; color:var(--text-3); margin-left:3px; }
+  .kpi .delta{ font-size:11px; margin-top:4px; color:var(--text-3); }
+  .kpi.accent .val{ color:var(--accent); } .kpi.aqua .val{ color:var(--aqua); }
+  .kpi.warn .val{ color:var(--warn); } .kpi.crit .val{ color:var(--crit); } .kpi.good .val{ color:var(--good); }
+
+  .grid-2{ display:grid; grid-template-columns:1.3fr 1fr; gap:12px; align-items:stretch; }
+  .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  @media (max-width:920px){ .grid-2, .grid-3{ grid-template-columns:1fr; } }
+
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+  .panel-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px; gap:10px; }
+  .panel-head h3{ font-size:13px; margin:0; font-weight:700; }
+  .panel-head .meta{ font-size:11px; color:var(--text-3); }
+
+  .chip{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; padding:3px 8px; border-radius:999px; font-weight:600; white-space:nowrap; }
+  .chip .d{ width:6px; height:6px; border-radius:50%; flex:none; }
+  .chip.good{ background:var(--good-wash); color:var(--good); } .chip.good .d{ background:var(--good); }
+  .chip.warn{ background:var(--warn-wash); color:var(--warn); } .chip.warn .d{ background:var(--warn); }
+  .chip.serious{ background:var(--serious-wash); color:var(--serious); } .chip.serious .d{ background:var(--serious); }
+  .chip.crit{ background:var(--crit-wash); color:var(--crit); } .chip.crit .d{ background:var(--crit); }
+  .chip.muted{ background:var(--surface-2); color:var(--text-3); } .chip.muted .d{ background:var(--text-3); }
+  .chip.accent{ background:var(--accent-wash); color:var(--accent); } .chip.accent .d{ background:var(--accent); }
+
+  .tablewrap{ overflow:auto; border:1px solid var(--border); border-radius:var(--radius); max-height:560px; }
+  table.data{ width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.data thead th{
+    position:sticky; top:0; background:var(--surface-2); text-align:left; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:.05em; color:var(--text-3); padding:9px 12px; border-bottom:1px solid var(--border); white-space:nowrap; z-index:1;
+  }
+  table.data tbody td{ padding:8px 12px; border-bottom:1px solid var(--border); white-space:nowrap; color:var(--text-2); }
+  table.data tbody td.strong{ color:var(--text-1); font-weight:600; }
+  table.data tbody tr:hover td{ background:var(--surface-2); }
+  table.data tbody tr:last-child td{ border-bottom:none; }
+
+  .toolbar{ display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .toolbar input[type="text"]{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:6px; padding:7px 10px; font-size:12.5px; width:220px; font-family:var(--font-ui); }
+  .toolbar input[type="text"]::placeholder{ color:var(--text-3); }
+  .toolbar select{ background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:6px; padding:7px 10px; font-size:12.5px; font-family:var(--font-ui); }
+  .toolbar .count{ font-size:11.5px; color:var(--text-3); margin-left:auto; }
+
+  .tabs{ display:flex; gap:6px; margin-bottom:12px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .tabs button{ background:none; border:none; padding:9px 4px; margin-right:14px; font-size:13px; color:var(--text-3); cursor:pointer; border-bottom:2px solid transparent; font-weight:600; font-family:inherit; }
+  .tabs button.active{ color:var(--text-1); border-color:var(--accent); }
+  .tabs button .badge{ margin-left:6px; font-size:11px; background:var(--surface-2); color:var(--text-3); padding:1px 6px; border-radius:999px; }
+  .tabs button.active .badge{ background:var(--accent-wash); color:var(--accent); }
+
+  .tl{ position:relative; padding-left:26px; }
+  .tl::before{ content:""; position:absolute; left:6px; top:4px; bottom:4px; width:1px; background:var(--border-strong); }
+  .tl-item{ position:relative; padding-bottom:18px; }
+  .tl-item::before{ content:""; position:absolute; left:-26px; top:3px; width:9px; height:9px; border-radius:50%; background:var(--surface); border:2px solid var(--accent); }
+  .tl-item.good::before{ border-color:var(--good); } .tl-item.crit::before{ border-color:var(--crit); } .tl-item.warn::before{ border-color:var(--warn); }
+  .tl-time{ font-family:var(--font-mono); font-size:11.5px; color:var(--text-3); }
+  .tl-text{ font-size:13px; margin-top:2px; }
+  .tl-sub{ font-size:11.5px; color:var(--text-3); margin-top:1px; }
+
+  .alert-card{ border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); padding:14px 16px; display:flex; gap:12px; margin-bottom:10px; }
+  .alert-card .ic{ width:34px; height:34px; border-radius:8px; flex:none; display:flex; align-items:center; justify-content:center; }
+  .alert-card.new .ic{ background:var(--accent-wash); color:var(--accent); }
+  .alert-card.unauth .ic{ background:var(--crit-wash); color:var(--crit); }
+  .alert-card .body{ flex:1; min-width:0; }
+  .alert-card .title-row{ display:flex; align-items:center; gap:8px; }
+  .alert-card .title-row .t{ font-weight:700; font-size:13.5px; }
+  .alert-card .kv{ display:flex; gap:18px; margin-top:8px; flex-wrap:wrap; }
+  .alert-card .kv div{ font-size:11.5px; color:var(--text-3); }
+  .alert-card .kv div b{ display:block; color:var(--text-1); font-family:var(--font-mono); font-size:12.5px; font-weight:600; margin-top:1px; }
+  .alert-card .actions{ display:flex; gap:8px; margin-top:10px; }
+  .btn{ border:1px solid var(--border-strong); background:var(--surface-2); color:var(--text-1); border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn:hover{ background:var(--surface-3); }
+  .btn.danger{ background:var(--crit-wash); color:var(--crit); border-color:transparent; }
+  .btn.ghost{ background:transparent; }
+
+  .topo{ display:flex; flex-direction:column; align-items:center; gap:0; padding:22px 10px; }
+  .topo-node{ border:1px solid var(--border-strong); background:var(--surface-2); border-radius:7px; padding:10px 18px; font-size:12.5px; font-weight:700; text-align:center; min-width:140px; }
+  .topo-node .sub{ font-size:10.5px; font-weight:500; color:var(--text-3); margin-top:2px; }
+  .topo-node.accent{ border-color:color-mix(in srgb, var(--accent) 50%, var(--border-strong)); background:var(--accent-wash); color:var(--accent); }
+  .topo-line{ width:1px; height:26px; background:var(--border-strong); }
+  .topo-row{ display:flex; gap:26px; flex-wrap:wrap; justify-content:center; }
+  .topo-branch{ display:flex; flex-direction:column; align-items:center; }
+
+  .flow4{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  @media (max-width:920px){ .flow4{ grid-template-columns:1fr 1fr; } }
+  .flow-card{ border:1px solid var(--border); border-radius:var(--radius); padding:12px; background:var(--surface); }
+  .flow-card .rank{ font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); font-weight:700; }
+  .flow-card.best{ border-color:color-mix(in srgb, var(--good) 40%, var(--border)); }
+  .flow-card.best .rank{ color:var(--good); }
+  .flow-step{ font-size:12px; padding:7px 0; border-bottom:1px dashed var(--border); font-family:var(--font-mono); }
+  .flow-step:last-child{ border-bottom:none; }
+  .flow-arrow{ text-align:center; color:var(--text-3); font-size:11px; }
+
+  .callout{ border-radius:var(--radius); padding:14px 16px; border:1px solid var(--border); display:flex; gap:12px; }
+  .callout.info{ background:var(--accent-wash); border-color:color-mix(in srgb, var(--accent) 30%, var(--border)); }
+  .callout.ask{ background:var(--tag-wash); border-color:color-mix(in srgb, var(--tag) 30%, var(--border)); }
+  .callout .ic{ flex:none; }
+  .callout h4{ margin:0 0 4px; font-size:13px; }
+  .callout p{ margin:0; font-size:12.5px; color:var(--text-2); }
+  .callout p + p{ margin-top:6px; }
+
+  .stack-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  @media (max-width:920px){ .stack-grid{ grid-template-columns:1fr 1fr; } }
+  .stack-card h3{ font-size:12.5px; margin:0 0 10px; }
+  .stack-card .chiplist{ display:flex; flex-wrap:wrap; gap:6px; }
+  .code-chip{ font-family:var(--font-mono); font-size:11.5px; background:var(--surface-2); border:1px solid var(--border); border-radius:5px; padding:4px 8px; color:var(--text-1); }
+
+  .ai-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:820px){ .ai-grid{ grid-template-columns:1fr; } }
+  .ai-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .ai-list li{ display:flex; align-items:center; gap:10px; font-size:13px; padding:8px 10px; border-radius:6px; background:var(--surface-2); }
+  .ai-list li .n{ font-family:var(--font-mono); font-size:11px; color:var(--text-3); width:16px; }
+
+  .chart-wrap{ position:relative; }
+  svg.chart{ width:100%; height:180px; display:block; overflow:visible; }
+  .chart-tooltip{ position:absolute; pointer-events:none; background:var(--surface-2); border:1px solid var(--border-strong); border-radius:6px; padding:6px 9px; font-size:11.5px; transform:translate(-50%,-115%); white-space:nowrap; opacity:0; transition:opacity .1s; }
+  .chart-tooltip b{ font-family:var(--font-mono); }
+  .legend{ display:flex; gap:14px; margin-top:8px; flex-wrap:wrap; }
+  .legend-item{ display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--text-2); }
+  .legend-swatch{ width:9px; height:9px; border-radius:2px; }
+
+  .empty{ text-align:center; padding:48px 20px; color:var(--text-3); }
+  .empty .big{ font-size:14px; color:var(--text-2); margin-bottom:6px; font-weight:600; }
+  .empty code{ font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--border); padding:2px 6px; border-radius:5px; color:var(--text-1); }
+
+  .field{ font-size:12.5px; margin-bottom:12px; }
+  .field > div:first-child{ color:var(--text-3); margin-bottom:5px; }
+  .field input, .field textarea{ width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text-1); border-radius:6px; padding:8px 10px; font-family:var(--font-mono); }
+  .scroller{ overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark"><span class="dot"></span> NETWATCH&nbsp;NOC</div>
+      <div class="sub">Live &middot; polling real hardware</div>
+    </div>
+    <nav class="nav" id="nav">
+      <div class="navgroup-label">Monitor</div>
+      <button class="navitem" data-page="dashboard">Dashboard</button>
+      <button class="navitem" data-page="labs">Labs</button>
+      <button class="navitem" data-page="devices">Devices <span class="cnt" id="cnt-devices"></span></button>
+      <button class="navitem" data-page="wifi">Wi-Fi Users <span class="cnt" id="cnt-wifi"></span></button>
+      <button class="navitem" data-page="ethernet">Ethernet Users <span class="cnt" id="cnt-eth"></span></button>
+      <button class="navitem" data-page="analysis">Analysis</button>
+      <button class="navitem" data-page="timeline">Timeline</button>
+      <button class="navitem" data-page="alerts">Alerts <span class="cnt" id="cnt-alerts"></span></button>
+      <div class="navgroup-label">Design</div>
+      <button class="navitem" data-page="architecture">Architecture</button>
+      <button class="navitem" data-page="stack">Tech Stack &amp; AI</button>
+      <button class="navitem" data-page="settings">Settings</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="theme-toggle" id="themeToggle">
+        <button data-theme="light">Light</button>
+        <button data-theme="dark">Dark</button>
+        <button data-theme="auto">Auto</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="crumb" id="pageCrumb">Live overview of the college network</div>
+      </div>
+      <div class="spacer"></div>
+      <span class="clock" id="clock">--:--:--</span>
+      <span class="pill" id="internetPill">Internet: …</span>
+      <span class="pill">Bandwidth <b class="mono num" id="bwPill">–</b>&nbsp;Mbps</span>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<script>
+/* ===================== tiny fetch helpers ===================== */
+async function getJSON(url){ const r = await fetch(url); return r.json(); }
+async function postJSON(url, body){
+  const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{}) });
+  return r.json();
+}
+const pad = (n,l=2) => String(n).padStart(l,'0');
+function fmtTime(iso){ return new Date(iso).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+function fmtDateTime(iso){ return new Date(iso).toLocaleString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,day:'2-digit',month:'short'}); }
+function num(v, fallback='—'){ return (v===null||v===undefined) ? fallback : v; }
+
+/* ===================== render helpers (pure) ===================== */
+function statusChip(s){
+  if(s==='Online') return `<span class="chip good"><span class="d"></span>Online</span>`;
+  if(s==='Idle') return `<span class="chip warn"><span class="d"></span>Idle</span>`;
+  return `<span class="chip muted"><span class="d"></span>Inactive</span>`;
+}
+function authChip(d){
+  if(!d.is_authorized) return `<span class="chip crit"><span class="d"></span>Unauthorized</span>`;
+  return '';
+}
+function kpi({label, value, unit, cls, note}){
+  return `<div class="kpi ${cls||''}">
+    <div class="cap">${label}</div>
+    <div class="val">${value}${unit?`<span class="unit">${unit}</span>`:''}</div>
+    ${note?`<div class="delta">${note}</div>`:''}
+  </div>`;
+}
+function emptyState(title, hint){
+  return `<div class="empty"><div class="big">${title}</div><div>${hint}</div></div>`;
+}
+function tlItem(e){
+  return `<div class="tl-item ${e.kind}">
+    <div class="tl-time">${fmtTime(e.at)}</div>
+    <div class="tl-text">${e.text}</div>
+    <div class="tl-sub">${e.sub||''}</div>
+  </div>`;
+}
+function icoWarn(){ return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 22 20H2Z" stroke-linejoin="round"/><path d="M12 9v5M12 17.5v.01"/></svg>`; }
+function icoPlus(){ return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>`; }
+function icoInfo(){ return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 11h1v6h1"/></svg>`; }
+function icoAsk(){ return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.8 2.1c-.8.5-1.3 1-1.3 2.1M12 17h.01"/></svg>`; }
+
+function lineChart(samples){
+  if(!samples.length) return null;
+  const W=600,H=160,pad=8;
+  const vals = samples.map(s=>s.mbps);
+  const max = Math.max(200, Math.max(...vals)*1.15);
+  const stepX = samples.length>1 ? (W-pad*2)/(samples.length-1) : 0;
+  const scaleY = v => H - pad - (v/max)*(H-pad*2);
+  const coords = samples.map((s,i)=>[pad+i*stepX, scaleY(s.mbps)]);
+  const line = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+  const area = line + ` L${coords[coords.length-1][0].toFixed(1)},${H-pad} L${coords[0][0].toFixed(1)},${H-pad} Z`;
+  const gridY = [0,0.25,0.5,0.75,1].map(f=> H-pad-f*(H-pad*2));
+  const dots = coords.map((c,i)=>`<circle class="pt" data-i="${i}" cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="9" fill="transparent"/>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" id="bwChart">
+    ${gridY.map(y=>`<line x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`).join('')}
+    <path d="${area}" fill="var(--accent)" opacity="0.10"/>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <circle cx="${coords[coords.length-1][0].toFixed(1)}" cy="${coords[coords.length-1][1].toFixed(1)}" r="4" fill="var(--accent)"/>
+    ${dots}
+  </svg>`;
+}
+function wireBwTooltip(samples){
+  const svg = document.getElementById('bwChart'); if(!svg) return;
+  const wrap = svg.closest('.chart-wrap');
+  let tip = wrap.querySelector('.chart-tooltip');
+  if(!tip){ tip = document.createElement('div'); tip.className='chart-tooltip'; wrap.appendChild(tip); }
+  svg.querySelectorAll('.pt').forEach(pt=>{
+    pt.addEventListener('mousemove', e=>{
+      const i = +pt.dataset.i; const s = samples[i];
+      const rect = wrap.getBoundingClientRect();
+      tip.style.left = (e.clientX - rect.left)+'px';
+      tip.style.top = (e.clientY - rect.top)+'px';
+      tip.style.opacity = 1;
+      tip.innerHTML = `<b>${s.mbps} Mbps</b><br><span style="color:var(--text-3)">${fmtTime(s.at)}</span>`;
+    });
+    pt.addEventListener('mouseleave', ()=> tip.style.opacity = 0);
+  });
+}
+
+function multiLineChart(series){
+  const n = series[0]?.values.length || 0;
+  if(!n) return null;
+  const W=600,H=180,pad=8;
+  const max = Math.max(1, ...series.flatMap(s=>s.values)) * 1.15;
+  const stepX = n>1 ? (W-pad*2)/(n-1) : 0;
+  const scaleY = v => H - pad - (v/max)*(H-pad*2);
+  const gridY = [0,0.25,0.5,0.75,1].map(f=> H-pad-f*(H-pad*2));
+  const paths = series.map(s=>{
+    const coords = s.values.map((v,i)=>[pad+i*stepX, scaleY(v)]);
+    const line = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+    return `<path d="${line}" fill="none" stroke="${s.color}" stroke-width="2"/>`;
+  }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${gridY.map(y=>`<line x1="${pad}" x2="${W-pad}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="1"/>`).join('')}
+    ${paths}
+  </svg>`;
+}
+
+function hourBarChart(peakHours){
+  if(!peakHours.length) return null;
+  const W=600,H=150,pad=8;
+  const max = Math.max(1, ...peakHours.map(h=>h.avg_total)) * 1.15;
+  const slot = (W-pad*2)/24;
+  const barW = Math.max(2, slot - 3);
+  const bars = Array.from({length:24}, (_,h)=>{
+    const row = peakHours.find(p=>p.hour===h);
+    const v = row ? row.avg_total : 0;
+    const x = pad + h*slot;
+    const barH = (v/max)*(H-pad*2-16);
+    return `<rect x="${x.toFixed(1)}" y="${(H-pad-16-barH).toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" fill="var(--accent)" rx="2"/>`;
+  }).join('');
+  const labels = [0,4,8,12,16,20].map(h=>{
+    const x = pad + h*slot;
+    return `<text x="${x.toFixed(1)}" y="${H-4}" font-size="9" fill="var(--text-3)">${String(h).padStart(2,'0')}:00</text>`;
+  }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${labels}</svg>`;
+}
+
+function alertTrendChart(trend){
+  if(!trend.length) return null;
+  const W=600,H=150,pad=8;
+  const max = Math.max(1, ...trend.map(t=>t.new+t.unauthorized)) * 1.2;
+  const slot = (W-pad*2)/trend.length;
+  const barW = Math.max(3, slot - 6);
+  const bars = trend.map((t,i)=>{
+    const x = pad + i*slot;
+    const totalH = ((t.new+t.unauthorized)/max)*(H-pad*2);
+    const unauthH = (t.unauthorized/max)*(H-pad*2);
+    const newH = totalH - unauthH;
+    return `<rect x="${x.toFixed(1)}" y="${(H-pad-totalH).toFixed(1)}" width="${barW.toFixed(1)}" height="${newH.toFixed(1)}" fill="var(--accent)"/>
+      <rect x="${x.toFixed(1)}" y="${(H-pad-unauthH).toFixed(1)}" width="${barW.toFixed(1)}" height="${unauthH.toFixed(1)}" fill="var(--crit)"/>`;
+  }).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`;
+}
+
+/* ===================== pages (each fetches its own data) ===================== */
+async function pageDashboard(){
+  const [kpis, bw, alerts, timeline, labs] = await Promise.all([
+    getJSON('/api/kpis/'), getJSON('/api/bandwidth/'), getJSON('/api/alerts/'), getJSON('/api/timeline/'), getJSON('/api/labs/')
+  ]);
+  const chart = lineChart(bw.samples);
+  const total = kpis.total_connected || 0;
+
+  const labRows = labs.labs.map((l,i)=>{
+    const pct = total ? Math.round(l.count/total*100) : 0;
+    return `<div class="split-row" style="display:grid;grid-template-columns:76px 1fr 46px;gap:10px;align-items:center;font-size:12px;">
+      <span>${l.name}</span>
+      <div style="height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;"><span style="display:block;height:100%;width:${pct}%;background:${['var(--accent)','var(--aqua)','var(--tag)'][i%3]}"></span></div>
+      <span class="num" style="text-align:right">${l.count}</span>
+    </div>`;
+  }).join('') || emptyState('No labs yet', 'Add switches to <code>network_config.json</code>');
+
+  const wifiPct = total ? Math.round(kpis.wifi_users/total*100) : 0;
+  const ethPct = total ? Math.round(kpis.ethernet_users/total*100) : 0;
+
+  return `
+  <div class="kpi-grid">
+    ${kpi({label:'Total Connected', value:total, cls:'accent', note:'Wi-Fi + Ethernet, live'})}
+    ${kpi({label:'Wi-Fi Users', value:kpis.wifi_users, cls:'accent'})}
+    ${kpi({label:'Ethernet Users', value:kpis.ethernet_users, cls:'aqua'})}
+    ${labs.labs.map(l=>kpi({label:l.name+' Users', value:l.count, note:l.room})).join('')}
+    ${kpi({label:'Inactive Devices', value:kpis.inactive_devices, cls:'warn'})}
+    ${kpi({label:'New Device', value:kpis.new_devices_last_hour, cls:'accent', note:'In the last hour'})}
+    ${kpi({label:'Unauthorized', value:kpis.unauthorized_devices, cls:'crit'})}
+    ${kpi({label:'Internet Status', value:kpis.internet_status, cls: kpis.internet_status==='ONLINE'?'good':'crit'})}
+    ${kpi({label:'Bandwidth', value:kpis.bandwidth_mbps, unit:'Mbps', cls:'accent'})}
+  </div>
+
+  <div class="grid-2" style="margin-top:12px;">
+    <div class="panel chart-wrap">
+      <div class="panel-head"><h3>Bandwidth — recent polls</h3><span class="meta">${bw.samples.length} samples</span></div>
+      ${chart || emptyState('No bandwidth samples yet', 'Run <code>python manage.py poll_network</code> to start collecting')}
+      ${chart ? `<div class="legend"><span class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>Router WAN throughput (Mbps)</span></div>` : ''}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Connection split</h3><span class="meta">${total} total</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="split-row" style="display:grid;grid-template-columns:76px 1fr 46px;gap:10px;align-items:center;font-size:12px;"><span>Wi-Fi</span><div style="height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;"><span style="display:block;height:100%;width:${wifiPct}%;background:var(--accent)"></span></div><span class="num" style="text-align:right">${kpis.wifi_users}</span></div>
+        <div class="split-row" style="display:grid;grid-template-columns:76px 1fr 46px;gap:10px;align-items:center;font-size:12px;"><span>Ethernet</span><div style="height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;"><span style="display:block;height:100%;width:${ethPct}%;background:var(--aqua)"></span></div><span class="num" style="text-align:right">${kpis.ethernet_users}</span></div>
+      </div>
+      <div class="panel-head" style="margin-top:18px;"><h3>By lab (Ethernet)</h3></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">${labRows}</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:12px;">
+    <div class="panel">
+      <div class="panel-head"><h3>Recent alerts</h3><button class="btn ghost" onclick="goPage('alerts')">View all →</button></div>
+      ${renderAlertPreview(alerts)}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Live timeline</h3><button class="btn ghost" onclick="goPage('timeline')">View all →</button></div>
+      <div class="tl">${timeline.events.slice(0,4).map(tlItem).join('') || emptyState('No events yet','Waiting for the first collector poll')}</div>
+    </div>
+  </div>
+  `;
+}
+function renderAlertPreview(alerts){
+  const items = [
+    ...alerts.new.map(a=>({...a, cls:'new', title:'New device connected'})),
+    ...alerts.unauthorized.map(a=>({...a, cls:'unauth', title:'Unauthorized device'})),
+  ];
+  if(!items.length) return emptyState('No active alerts', 'Everything looks normal');
+  return items.slice(0,6).map(a=>`
+    <div class="alert-card ${a.cls}" style="padding:10px 12px; margin-bottom:8px;">
+      <div class="ic">${a.cls==='unauth'?icoWarn():icoPlus()}</div>
+      <div class="body">
+        <div class="title-row"><span class="t" style="font-size:12.5px;">${a.title}</span></div>
+        <div style="font-size:11.5px;color:var(--text-3); margin-top:2px;"><span class="mono">${a.mac}</span> · ${a.lab||a.through} · ${fmtTime(a.at)}</div>
+      </div>
+    </div>`).join('');
+}
+function pageDashboardAfter(){
+  getJSON('/api/bandwidth/').then(bw=> wireBwTooltip(bw.samples));
+}
+
+let labsCache = [];
+let currentLab = null;
+async function pageLabs(){
+  const {labs} = await getJSON('/api/labs/');
+  labsCache = labs;
+  if(!labs.length) return emptyState('No labs configured yet', 'Add your switches to <code>network_config.json</code>, then run <code>python manage.py poll_network</code>');
+  if(!currentLab || !labs.find(l=>l.id===currentLab)) currentLab = labs[0].id;
+  return `<div class="tabs" id="labTabs">${labs.map(l=>`<button class="labtab ${l.id===currentLab?'active':''}" data-lab="${l.id}">${l.name} <span class="badge">${l.count}</span></button>`).join('')}</div><div id="labBody"></div>`;
+}
+function wireLabTabs(){
+  document.querySelectorAll('.labtab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentLab = +btn.dataset.lab;
+      document.querySelectorAll('.labtab').forEach(b=>b.classList.toggle('active', b===btn));
+      renderLabBody();
+    });
+  });
+}
+async function renderLabBody(){
+  if(!currentLab) return;
+  const lab = labsCache.find(l=>l.id===currentLab);
+  const {devices} = await getJSON(`/api/labs/${currentLab}/devices/`);
+  const rows = devices.map(d=>`<tr data-s="${(d.hostname+d.student_name+d.ip+d.mac).toLowerCase()}">
+      <td class="strong mono">${d.hostname || ('Port '+d.port)}</td><td class="mono">${d.ip||'—'}</td><td class="mono">${d.mac}</td>
+      <td>${d.student_name || '<span style="color:var(--text-3)">unmapped</span>'}</td>
+      <td class="mono">${fmtDateTime(d.first_seen)}</td>
+      <td class="mono">${d.link_speed_mbps ? d.link_speed_mbps+' Mbps' : '—'}</td>
+      <td>${statusChip(d.status)} ${authChip(d)}</td>
+    </tr>`).join('');
+  document.getElementById('labBody').innerHTML = `
+    <div class="grid-3" style="margin-bottom:14px;">
+      ${kpi({label:'Total Users', value:lab.count, cls:'accent'})}
+      ${kpi({label:'Switch', value: lab.switch_label || '—'})}
+      ${kpi({label:'Room', value: lab.room || '—'})}
+    </div>
+    <div class="toolbar">
+      <input type="text" id="labSearch" placeholder="Search hostname, student, IP or MAC..." />
+      <span class="count" id="labCount">${devices.length} devices</span>
+    </div>
+    <div class="tablewrap">
+      <table class="data" id="labTable">
+        <thead><tr><th>PC</th><th>IP</th><th>MAC</th><th>Student Name</th><th>Connected Since</th><th>Speed</th><th>Status</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="7">${emptyState('No devices on this switch yet','Run the collector, or confirm SNMP is enabled on this switch')}</td></tr>`}</tbody>
+      </table>
+    </div>`;
+  const search = document.getElementById('labSearch');
+  search?.addEventListener('input', ()=>{
+    const q = search.value.toLowerCase(); let n=0;
+    document.querySelectorAll('#labTable tbody tr').forEach(tr=>{
+      const show = (tr.dataset.s||'').includes(q); tr.style.display = show?'':'none'; if(show) n++;
+    });
+    document.getElementById('labCount').textContent = `${n} devices`;
+  });
+}
+
+function deviceTableRows(devices){
+  return devices.map(d=>`<tr data-s="${(d.ip+d.mac+d.hostname+d.device_name).toLowerCase()}" data-through="${d.connection_type}" data-status="${d.status}">
+      <td class="mono">${d.ip||'—'}</td><td class="mono">${d.mac}</td><td class="mono">${d.hostname||'—'}</td>
+      <td class="strong">${d.device_name}</td><td>${d.connected_through}</td><td>${d.lab||'—'}</td><td class="mono">${d.port===''?'—':d.port}</td>
+      <td class="mono">${fmtDateTime(d.first_seen)}</td><td class="mono">${fmtTime(d.last_seen)}</td>
+      <td class="mono num">${num(d.upload_mbps)}</td><td class="mono num">${num(d.download_mbps)}</td>
+      <td>${statusChip(d.status)} ${authChip(d)}</td>
+    </tr>`).join('');
+}
+async function pageDevices(){
+  const {devices} = await getJSON('/api/devices/');
+  if(!devices.length) return emptyState('No devices seen yet', 'Run <code>python manage.py poll_network</code> after setting up <code>network_config.json</code>');
+  return `
+  <div class="toolbar">
+    <input type="text" id="devSearch" placeholder="Search IP, MAC, hostname, name..." />
+    <select id="devFilter"><option value="">All connections</option><option value="ethernet">Ethernet only</option><option value="wifi">Wi-Fi only</option></select>
+    <select id="devStatus"><option value="">All status</option><option value="Online">Online</option><option value="Idle">Idle</option><option value="Inactive">Inactive</option></select>
+    <span class="count" id="devCount">${devices.length} devices</span>
+  </div>
+  <div class="tablewrap">
+    <table class="data" id="devTable">
+      <thead><tr><th>IP</th><th>MAC</th><th>Hostname</th><th>Device / Name</th><th>Connected Through</th><th>Lab</th><th>Port</th><th>First Seen</th><th>Last Active</th><th>Upload</th><th>Download</th><th>Status</th></tr></thead>
+      <tbody>${deviceTableRows(devices)}</tbody>
+    </table>
+  </div>`;
+}
+function wireDeviceFilters(){
+  const search = document.getElementById('devSearch'); if(!search) return;
+  const through = document.getElementById('devFilter'); const status = document.getElementById('devStatus');
+  function apply(){
+    const q = search.value.toLowerCase(); const tf = through.value; const sf = status.value; let n=0;
+    document.querySelectorAll('#devTable tbody tr').forEach(tr=>{
+      const show = tr.dataset.s.includes(q) && (!tf || tr.dataset.through===tf) && (!sf || tr.dataset.status===sf);
+      tr.style.display = show?'':'none'; if(show) n++;
+    });
+    document.getElementById('devCount').textContent = `${n} devices`;
+  }
+  [search,through,status].forEach(el=> el.addEventListener('input', apply));
+}
+
+async function pageWifi(){
+  const {devices} = await getJSON('/api/wifi/');
+  if(!devices.length) return emptyState('No Wi-Fi devices seen yet', "These show up once they appear in the router's ARP table — check the router's SNMP is enabled");
+  const rows = devices.map(d=>`<tr data-s="${(d.student_name+d.hostname+d.ip+d.mac).toLowerCase()}">
+      <td class="strong">${d.student_name || d.hostname || '<span style="color:var(--text-3)">unmapped</span>'}</td>
+      <td class="mono">${d.hostname||'—'}</td><td class="mono">${d.ip||'—'}</td><td class="mono">${d.mac}</td>
+      <td class="mono">${d.download_mbps!==null?d.download_mbps+' Mbps':'—'}</td>
+      <td class="mono">${fmtTime(d.first_seen)}</td><td>${statusChip(d.status)} ${authChip(d)}</td>
+    </tr>`).join('');
+  return `
+  <div class="toolbar"><input type="text" id="wifiSearch" placeholder="Search device, student, MAC..." /><span class="count" id="wifiCount">${devices.length} devices</span></div>
+  <div class="tablewrap"><table class="data" id="wifiTable">
+    <thead><tr><th>Student / Device</th><th>Hostname</th><th>IP</th><th>MAC</th><th>Bandwidth</th><th>First Seen</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+  <p class="sec-note" style="margin-top:10px;">Signal strength and access-point name need an AP/Wi-Fi controller integration — not wired in yet (see the Architecture page, Option 3).</p>`;
+}
+
+async function pageEthernet(){
+  const {devices} = await getJSON('/api/ethernet/');
+  if(!devices.length) return emptyState('No Ethernet devices seen yet', 'Confirm SNMP is enabled on each lab switch, then run the collector');
+  const rows = devices.map(d=>`<tr data-s="${(d.hostname+d.student_name+d.mac).toLowerCase()}">
+      <td class="strong mono">${d.lab||'—'} · ${d.hostname||('Port '+d.port)}</td><td>${d.student_name||'—'}</td><td class="mono">${d.mac}</td>
+      <td class="mono">${d.lab||'—'} / Port ${d.port===''?'—':d.port}</td><td class="mono">${d.link_speed_mbps?d.link_speed_mbps+' Mbps':'—'}</td>
+      <td>${statusChip(d.status)}</td><td class="mono">${fmtTime(d.last_seen)}</td>
+    </tr>`).join('');
+  return `
+  <div class="toolbar"><input type="text" id="ethSearch" placeholder="Search hostname, student, MAC..." /><span class="count" id="ethCount">${devices.length} devices</span></div>
+  <div class="tablewrap"><table class="data" id="ethTable">
+    <thead><tr><th>Device (Lab PC)</th><th>Student</th><th>MAC</th><th>Switch / Port</th><th>Link Speed</th><th>Status</th><th>Last Seen</th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+
+async function pageAnalysis(){
+  const a = await getJSON('/api/analysis/');
+  if(!a.sample_count){
+    return emptyState('No analysis data yet', 'Run <code>python manage.py poll_network</code> a few times (or leave <code>--loop</code> running) to build up enough history to analyze — every chart here is computed from real polls, nothing is estimated.');
+  }
+
+  const usageSeries = a.usage_series;
+  const totalChart = multiLineChart([
+    {label:'Total', color:'var(--accent)', values: usageSeries.map(s=>s.total)},
+    {label:'Ethernet', color:'var(--aqua)', values: usageSeries.map(s=>s.ethernet)},
+    {label:'Wi-Fi', color:'var(--violet)', values: usageSeries.map(s=>s.wifi)},
+  ]);
+
+  const labNames = [...new Set(usageSeries.flatMap(s=>Object.keys(s.labs)))];
+  const labAverages = labNames.map(name=>{
+    const vals = usageSeries.map(s=>s.labs[name]||0);
+    return {name, avg: vals.reduce((x,y)=>x+y,0)/vals.length};
+  }).sort((x,y)=>y.avg-x.avg);
+  const maxLabAvg = Math.max(1, ...labAverages.map(l=>l.avg));
+  const labBars = labAverages.map((l,i)=>`<div style="display:grid;grid-template-columns:90px 1fr 50px;gap:10px;align-items:center;font-size:12px;">
+      <span>${l.name}</span>
+      <div style="height:8px;border-radius:5px;background:var(--surface-2);overflow:hidden;"><span style="display:block;height:100%;width:${(l.avg/maxLabAvg*100).toFixed(0)}%;background:${['var(--accent)','var(--aqua)','var(--tag)','var(--violet)'][i%4]}"></span></div>
+      <span class="num" style="text-align:right">${l.avg.toFixed(1)}</span>
+    </div>`).join('');
+
+  const uptimeCls = a.uptime_pct>=99 ? 'good' : (a.uptime_pct>=95 ? 'warn' : 'crit');
+  const topRows = a.top_devices.map(d=>`<tr>
+      <td class="strong">${d.name}</td><td class="mono">${d.mac}</td><td>${d.lab||'—'}</td>
+      <td class="mono num">${d.peak_upload_mbps ?? '—'}</td><td class="mono num">${d.peak_download_mbps ?? '—'}</td>
+    </tr>`).join('');
+
+  return `
+  <div class="kpi-grid">
+    ${kpi({label:'Internet Uptime', value:a.uptime_pct, unit:'%', cls:uptimeCls})}
+    ${kpi({label:'Avg Bandwidth', value:a.bandwidth_stats.avg, unit:'Mbps', cls:'accent'})}
+    ${kpi({label:'Peak Bandwidth', value:a.bandwidth_stats.peak, unit:'Mbps', cls:'accent'})}
+    ${kpi({label:'Busiest Hour', value: a.busiest_hour ? String(a.busiest_hour.hour).padStart(2,'0')+':00' : '—', note: a.busiest_hour ? `avg ${a.busiest_hour.avg_total} devices online` : ''})}
+    ${kpi({label:'Authorized', value:a.authorization.authorized, cls:'good'})}
+    ${kpi({label:'Unauthorized', value:a.authorization.unauthorized, cls:'crit'})}
+  </div>
+
+  <div class="grid-2" style="margin-top:12px;">
+    <div class="panel">
+      <div class="panel-head"><h3>Connections over time</h3><span class="meta">${usageSeries.length} polls</span></div>
+      ${totalChart || emptyState('Not enough history yet','Keep the collector running')}
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>Total</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--aqua)"></span>Ethernet</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--violet)"></span>Wi-Fi</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Busiest lab</h3><span class="meta">avg over observed window</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">${labBars || emptyState('No labs yet','—')}</div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:12px;">
+    <div class="panel">
+      <div class="panel-head"><h3>Peak usage hour</h3><span class="meta">avg devices connected, by hour of day</span></div>
+      ${hourBarChart(a.peak_hours) || emptyState('Not enough history yet','—')}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>Alert frequency</h3><span class="meta">last 14 days</span></div>
+      ${alertTrendChart(a.alert_trend) || emptyState('No alerts in this window',"Nothing to show — that's good news")}
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--accent)"></span>New device</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:var(--crit)"></span>Unauthorized</span>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">Top bandwidth consumers <span style="color:var(--text-3);font-weight:500;">(peak rate ever seen)</span></h2>
+  <div class="tablewrap"><table class="data">
+    <thead><tr><th>Device</th><th>MAC</th><th>Lab</th><th>Peak Upload</th><th>Peak Download</th></tr></thead>
+    <tbody>${topRows || '<tr><td colspan="5" style="text-align:center;color:var(--text-3);">No traffic data yet</td></tr>'}</tbody>
+  </table></div>
+  <p class="sec-note" style="margin-top:10px;">Wi-Fi devices aren't in this ranking — per-device Wi-Fi bandwidth needs an AP controller integration (see Architecture page, Option 3).</p>
+  `;
+}
+
+function wireSimpleSearch(inputId, tableId, countId, label){
+  const search = document.getElementById(inputId); if(!search) return;
+  search.addEventListener('input', ()=>{
+    const q = search.value.toLowerCase(); let n=0;
+    document.querySelectorAll('#'+tableId+' tbody tr').forEach(tr=>{
+      const show = (tr.dataset.s||'').includes(q); tr.style.display = show?'':'none'; if(show) n++;
+    });
+    document.getElementById(countId).textContent = `${n} ${label}`;
+  });
+}
+
+async function pageTimeline(){
+  const {events} = await getJSON('/api/timeline/');
+  return `<div class="panel"><div class="panel-head"><h3>Recent activity</h3><span class="meta">${events.length} events</span></div>
+    <div class="tl">${events.map(tlItem).join('') || emptyState('No events yet','Waiting for the first collector poll')}</div></div>`;
+}
+
+async function pageAlerts(){
+  const alerts = await getJSON('/api/alerts/');
+  const unauthHtml = alerts.unauthorized.map(a=>`
+    <div class="alert-card unauth" id="unauth-${a.id}">
+      <div class="ic">${icoWarn()}</div>
+      <div class="body">
+        <div class="title-row"><span class="t">Unauthorized device detected</span><span class="chip crit">WARNING</span></div>
+        <div class="kv"><div>MAC<b>${a.mac}</b></div><div>IP<b>${a.ip||'—'}</b></div><div>Lab/Via<b style="font-family:var(--font-ui);font-weight:600;">${a.lab||a.through}</b></div><div>Time<b style="font-family:var(--font-ui);font-weight:600;">${fmtTime(a.at)}</b></div></div>
+        <div class="actions">
+          ${a.is_blocked ? `<span class="chip crit">Blocked</span>` : `<button class="btn danger" onclick="blockDevice(${a.id},${a.device_id||"null"})">Block device</button>`}
+          <button class="btn ghost" onclick="ackAlert(${a.id})">Allow / Dismiss</button>
+        </div>
+      </div>
+    </div>`).join('');
+  const newHtml = alerts.new.map(a=>`
+    <div class="alert-card new" id="new-${a.id}">
+      <div class="ic">${icoPlus()}</div>
+      <div class="body">
+        <div class="title-row"><span class="t">New device connected</span><span class="chip accent">INFO</span></div>
+        <div class="kv"><div>MAC<b>${a.mac}</b></div><div>Lab/Via<b style="font-family:var(--font-ui);font-weight:600;">${a.lab||a.through}</b></div><div>Time<b style="font-family:var(--font-ui);font-weight:600;">${fmtTime(a.at)}</b></div></div>
+        <div class="actions"><button class="btn" onclick="ackAlert(${a.id})">Acknowledge</button></div>
+      </div>
+    </div>`).join('');
+  const inactiveRows = alerts.inactive.map(d=>`<tr><td class="strong mono">${d.hostname}</td><td class="mono">${d.mac}</td><td>${d.lab}</td><td class="mono">${fmtTime(d.last_seen)}</td></tr>`).join('');
+  return `
+  <h2 class="sec">Unauthorized device</h2>
+  ${unauthHtml || emptyState('None right now', alerts.unauthorized.length===0 ? 'Add MACs to the Whitelist in Settings to start flagging strangers' : '')}
+  <h2 class="sec">New device connected</h2>
+  ${newHtml || emptyState('None in the last hour','—')}
+  <h2 class="sec">Inactive devices <span style="color:var(--text-3); font-weight:500;">(${alerts.inactive.length})</span></h2>
+  <div class="tablewrap"><table class="data"><thead><tr><th>Hostname</th><th>MAC</th><th>Last Location</th><th>Last Seen</th></tr></thead>
+  <tbody>${inactiveRows || '<tr><td colspan="4" style="text-align:center;color:var(--text-3);">None</td></tr>'}</tbody></table></div>`;
+}
+async function ackAlert(id){ await postJSON(`/api/alerts/${id}/ack/`); goPage('alerts'); }
+async function blockDevice(alertId, deviceId){ if(deviceId) await postJSON(`/api/devices/${deviceId}/block/`); goPage('alerts'); }
+
+function pageArchitecture(){
+  return `
+  <h2 class="sec">Physical network topology</h2>
+  <div class="panel">
+    <div class="topo">
+      <div class="topo-node">Internet</div><div class="topo-line"></div>
+      <div class="topo-node">Firewall / Router</div><div class="topo-line"></div>
+      <div class="topo-node accent">Core Switch</div><div class="topo-line"></div>
+      <div class="topo-row" id="archLabRow"><span style="color:var(--text-3);font-size:12px;">Loading labs…</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">This project's live pipeline</h2>
+  <div class="panel">
+    <div class="topo">
+      <div class="topo-node">Managed lab switches + router (SNMP enabled)</div><div class="topo-line"></div>
+      <div class="topo-node accent">python manage.py poll_network<div class="sub">runs every 30s, reads network_config.json</div></div><div class="topo-line"></div>
+      <div class="topo-node">SQLite / PostgreSQL<div class="sub">Device, Lab, Alert, TimelineEvent, BandwidthSample</div></div><div class="topo-line"></div>
+      <div class="topo-node">Django views (this app)<div class="sub">/api/kpis/, /api/devices/, ...</div></div><div class="topo-line"></div>
+      <div class="topo-node accent">This dashboard<div class="sub">fetch() every 15s</div></div>
+    </div>
+  </div>
+
+  <h2 class="sec">How the data actually arrives — 4 options</h2>
+  <div class="flow4">
+    <div class="flow-card best"><div class="rank">Option 1 · In use here</div>
+      <div class="flow-step">Switch supports SNMP</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">poll_network.py reads counters</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Database</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Django dashboard</div></div>
+    <div class="flow-card"><div class="rank">Option 2</div>
+      <div class="flow-step">Router vendor API</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Python client</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Dashboard</div></div>
+    <div class="flow-card"><div class="rank">Option 3</div>
+      <div class="flow-step">Wi-Fi AP controller</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Controller API</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Dashboard</div></div>
+    <div class="flow-card"><div class="rank">Option 4</div>
+      <div class="flow-step">Windows Server + AD</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">User login events</div><div class="flow-arrow">↓</div>
+      <div class="flow-step">Dashboard</div></div>
+  </div>
+
+  <h2 class="sec">Important distinction</h2>
+  <div class="callout info">
+    <div class="ic">${icoInfo()}</div>
+    <div><h4>Device stats vs. student identity</h4>
+      <p>Everything numeric on this dashboard — counts, bandwidth, up/down, the timeline — comes straight from SNMP. No extra system needed.</p>
+      <p>Student names are the one thing SNMP can't give you. This project fills that gap with the <b>Whitelist</b> table (Settings page) — add a MAC + student name once, and it'll show up everywhere that MAC appears. For automatic mapping at scale you'd still want DHCP logs, RADIUS, or Active Directory.</p>
+    </div>
+  </div>
+  `;
+}
+async function pageArchitectureAfter(){
+  const {labs} = await getJSON('/api/labs/');
+  const row = document.getElementById('archLabRow');
+  if(!row) return;
+  row.innerHTML = labs.length ? labs.map(l=>`<div class="topo-branch">
+      <div class="topo-node">${l.name} Switch<div class="sub">${l.switch_label||''}</div></div>
+      <div class="topo-line"></div>
+      <div class="topo-node">PCs<div class="sub">${l.count} devices</div></div>
+    </div>`).join('') : `<span style="color:var(--text-3);font-size:12px;">No labs configured yet — edit network_config.json</span>`;
+}
+
+function pageStack(){
+  return `
+  <h2 class="sec">Technology stack</h2>
+  <div class="stack-grid">
+    <div class="card stack-card" style="padding:14px;"><h3>Backend</h3><div class="chiplist"><span class="code-chip">Django</span></div></div>
+    <div class="card stack-card" style="padding:14px;"><h3>Database</h3><div class="chiplist"><span class="code-chip">SQLite (default)</span><span class="code-chip">PostgreSQL (swap-in)</span></div></div>
+    <div class="card stack-card" style="padding:14px;"><h3>Networking</h3><div class="chiplist"><span class="code-chip">SNMP</span><span class="code-chip">ping3</span></div></div>
+    <div class="card stack-card" style="padding:14px;"><h3>Python libraries</h3><div class="chiplist"><span class="code-chip">pysnmp</span><span class="code-chip">ping3</span><span class="code-chip">Django</span></div></div>
+  </div>
+  <h2 class="sec">AI features — natural next step, not built yet</h2>
+  <div class="ai-grid">
+    <div class="panel"><div class="panel-head"><h3>Predict</h3><span class="meta">forecast from BandwidthSample history</span></div>
+      <ul class="ai-list"><li><span class="n">01</span>Internet going down</li><li><span class="n">02</span>Switch/port overload</li><li><span class="n">03</span>Too many concurrent users</li><li><span class="n">04</span>Bandwidth abuse by a device</li></ul></div>
+    <div class="panel"><div class="panel-head"><h3>Detect · Security</h3><span class="meta">rule-based today, ML-able later</span></div>
+      <ul class="ai-list"><li><span class="n">01</span>Unknown / unwhitelisted device — <b>already live</b></li><li><span class="n">02</span>MAC spoofing (same IP, changing MAC)</li><li><span class="n">03</span>Rogue access point</li><li><span class="n">04</span>ARP / DHCP anomalies</li></ul></div>
+  </div>`;
+}
+
+async function pageSettings(){
+  const [wl, cfg] = await Promise.all([getJSON('/api/whitelist/'), getJSON('/api/config/')]);
+  const wlRows = wl.whitelist.map(w=>`<tr><td class="mono">${w.mac}</td><td>${w.student_name||'—'}</td><td>${w.note||'—'}</td></tr>`).join('');
+  return `
+  <h2 class="sec">Whitelist (this is what powers "Unauthorized device" alerts)</h2>
+  <div class="panel" style="max-width:640px;">
+    <div class="field"><div>MAC address</div><input type="text" id="wlMac" placeholder="AA:BB:CC:DD:EE:FF" /></div>
+    <div class="field"><div>Student name (optional)</div><input type="text" id="wlName" placeholder="Arun Kumar" style="font-family:var(--font-ui);" /></div>
+    <button class="btn" style="background:var(--accent-wash); color:var(--accent);" onclick="addWhitelist()">Add to whitelist</button>
+    <div id="wlMsg" style="font-size:12px;color:var(--text-3);margin-top:8px;"></div>
+  </div>
+  <div class="tablewrap" style="margin-top:14px;max-width:640px;"><table class="data">
+    <thead><tr><th>MAC</th><th>Student</th><th>Note</th></tr></thead>
+    <tbody>${wlRows || '<tr><td colspan="3" style="text-align:center;color:var(--text-3);">Empty — nothing gets flagged as unauthorized until you add at least one entry</td></tr>'}</tbody>
+  </table></div>
+
+  <h2 class="sec">Hardware configuration (read-only — edit network_config.json directly)</h2>
+  <div class="panel scroller" style="max-width:640px;">
+    ${cfg.exists ? `<pre class="mono" style="margin:0;font-size:12px;white-space:pre-wrap;">${JSON.stringify(cfg.config, null, 2)}</pre>` : emptyState('network_config.json not found', 'Copy network_config.example.json to network_config.json in the project root and fill in your switch/router IPs')}
+  </div>
+  <p class="sec-note" style="margin-top:10px;">Changing this file takes effect on the next <code>python manage.py poll_network</code> run — no server restart needed.</p>
+  `;
+}
+async function addWhitelist(){
+  const mac = document.getElementById('wlMac').value.trim();
+  const student_name = document.getElementById('wlName').value.trim();
+  if(!mac){ document.getElementById('wlMsg').textContent = 'MAC is required.'; return; }
+  await postJSON('/api/whitelist/', {mac, student_name});
+  goPage('settings');
+}
+
+/* ===================== routing ===================== */
+const PAGES = {
+  dashboard: {title:'Dashboard', crumb:'Live overview of the college network', render: pageDashboard, after: pageDashboardAfter},
+  labs: {title:'Labs', crumb:'Lab-wise device roster', render: pageLabs, after: ()=>{ wireLabTabs(); renderLabBody(); }},
+  devices: {title:'Devices', crumb:'Every device on the network, one row each', render: pageDevices, after: wireDeviceFilters},
+  wifi: {title:'Wi-Fi Users', crumb:'Devices reached only through the router (not a lab switch)', render: pageWifi, after: ()=>wireSimpleSearch('wifiSearch','wifiTable','wifiCount','devices')},
+  ethernet: {title:'Ethernet Users', crumb:'Devices seen on a lab switch', render: pageEthernet, after: ()=>wireSimpleSearch('ethSearch','ethTable','ethCount','devices')},
+  analysis: {title:'Analysis', crumb:'Trends computed from your real collector history', render: pageAnalysis},
+  timeline: {title:'Timeline', crumb:'Connect / disconnect activity log', render: pageTimeline},
+  alerts: {title:'Alerts', crumb:'New, unauthorized and inactive devices', render: pageAlerts},
+  architecture: {title:'Architecture', crumb:'Network topology and data pipeline', render: pageArchitecture, after: pageArchitectureAfter},
+  stack: {title:'Tech Stack & AI', crumb:'Backend, protocols, libraries, AI features', render: pageStack},
+  settings: {title:'Settings', crumb:'Whitelist & hardware configuration', render: pageSettings},
+};
+let currentPageKey = 'dashboard';
+
+async function goPage(key){
+  currentPageKey = key;
+  const p = PAGES[key];
+  document.getElementById('pageTitle').textContent = p.title;
+  document.getElementById('pageCrumb').textContent = p.crumb || '';
+  document.querySelectorAll('.navitem').forEach(b=> b.classList.toggle('active', b.dataset.page===key));
+  try{
+    document.getElementById('content').innerHTML = await p.render();
+    if(p.after) await p.after();
+  }catch(err){
+    document.getElementById('content').innerHTML = emptyState('Could not load this page', 'Is the Django server running? Check the terminal for errors. (' + err + ')');
+  }
+}
+
+document.getElementById('nav').addEventListener('click', e=>{
+  const btn = e.target.closest('.navitem'); if(!btn) return;
+  goPage(btn.dataset.page);
+});
+
+async function refreshCounts(){
+  try{
+    const k = await getJSON('/api/kpis/');
+    document.getElementById('cnt-devices').textContent = k.total_connected;
+    document.getElementById('cnt-wifi').textContent = k.wifi_users;
+    document.getElementById('cnt-eth').textContent = k.ethernet_users;
+    document.getElementById('cnt-alerts').textContent = k.new_devices_last_hour + k.unauthorized_devices;
+    document.getElementById('bwPill').textContent = k.bandwidth_mbps;
+    const pill = document.getElementById('internetPill');
+    const online = k.internet_status === 'ONLINE';
+    pill.className = 'pill ' + (online?'online':'offline');
+    pill.innerHTML = `<span class="dot"></span> Internet: ${k.internet_status}`;
+  }catch(e){ /* server not reachable yet — ignore, next tick retries */ }
+}
+
+/* theme toggle */
+function applyTheme(mode){
+  if(mode==='auto'){ document.documentElement.removeAttribute('data-theme'); }
+  else { document.documentElement.setAttribute('data-theme', mode); }
+  document.querySelectorAll('#themeToggle button').forEach(b=> b.classList.toggle('on', b.dataset.theme===mode));
+}
+document.getElementById('themeToggle').addEventListener('click', e=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  applyTheme(btn.dataset.theme);
+});
+applyTheme('auto');
+
+function tickClock(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-IN',{hour12:true}); }
+tickClock(); setInterval(tickClock, 1000);
+
+refreshCounts();
+setInterval(refreshCounts, 15000);
+setInterval(()=>{ if(currentPageKey==='dashboard') goPage('dashboard'); }, 15000);
+
+goPage('dashboard');
+</script>
+</body>
+</html>

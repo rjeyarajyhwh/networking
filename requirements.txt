@@ -1,0 +1,13 @@
+Django==4.2.15
+
+# pysnmp's original 4.x line depends on the stdlib `asyncore` module, which
+# was removed in Python 3.12. This project targets the actively-maintained
+# lextudio fork (same package name, v6/v7), which is asyncio-based and
+# works on current Python. poll_network.py is written against its
+# pysnmp.hlapi.v3arch.asyncio API.
+pysnmp==7.1.27
+
+ping3==4.0.8
+
+# Uncomment if you switch DATABASES in settings.py to PostgreSQL:
+# psycopg2-binary==2.9.9

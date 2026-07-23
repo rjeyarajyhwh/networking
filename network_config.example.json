@@ -1,0 +1,14 @@
+{
+  "router": {
+    "ip": "192.168.1.1",
+    "community": "public",
+    "wan_ifindex": 1
+  },
+  "switches": [
+    { "lab": "Lab 1", "room": "CS Lab - Block A", "ip": "192.168.11.1", "community": "public", "label": "SW-LAB1 (24-port)", "order": 1 },
+    { "lab": "Lab 2", "room": "IT Lab - Block B", "ip": "192.168.12.1", "community": "public", "label": "SW-LAB2 (24-port)", "order": 2 },
+    { "lab": "Lab 3", "room": "ECE Lab - Block C", "ip": "192.168.13.1", "community": "public", "label": "SW-LAB3 (24-port)", "order": 3 }
+  ],
+  "inactive_after_minutes": 10,
+  "internet_check_host": "8.8.8.8"
+}
