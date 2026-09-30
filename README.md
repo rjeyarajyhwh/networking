@@ -164,3 +164,5 @@ netwatch/
 - **Wi-Fi list is empty but Ethernet works** — router SNMP likely isn't enabled, or `wan_ifindex`/router IP is wrong in `network_config.json`.
 - **Everything says "no data yet"** — the collector hasn't run yet, or hasn't run successfully. Run `python manage.py poll_network` in the foreground and read its output.
 - **Dashboard shows old numbers** — it polls the API every 15s; a hard refresh (Ctrl+F5) also works.
+#   n e t w o r k i n g  
+ 

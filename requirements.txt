@@ -1,4 +1,4 @@
-Django==4.2.15
+Django==5.2.16
 
 # pysnmp's original 4.x line depends on the stdlib `asyncore` module, which
 # was removed in Python 3.12. This project targets the actively-maintained
